@@ -16,6 +16,7 @@ jobs:
       - name: Add a VIA keymap (stock default keymap + VIA_ENABLE)
         run: |
           git config --global --add safe.directory '*'
+          /opt/uv/tools/qmk/bin/python3 -m pip install -r requirements.txt || uv pip install --python /opt/uv/tools/qmk/bin/python3 -r requirements.txt
           kb=keyboards/rk/r87pro_ansi_3m
           cp -r $kb/keymaps/default $kb/keymaps/via
           echo 'VIA_ENABLE = yes' > $kb/keymaps/via/rules.mk
