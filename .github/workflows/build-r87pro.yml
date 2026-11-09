@@ -1,0 +1,48 @@
+name: Build R87 Pro firmware (no charge flash)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ghcr.io/qmk/qmk_cli:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Add a VIA keymap (stock default keymap + VIA_ENABLE)
+        run: |
+          git config --global --add safe.directory '*'
+          kb=keyboards/rk/r87pro_ansi_3m
+          cp -r $kb/keymaps/default $kb/keymaps/via
+          echo 'VIA_ENABLE = yes' > $kb/keymaps/via/rules.mk
+
+      - name: Build stock firmware (for rollback)
+        run: |
+          qmk compile -kb rk/r87pro_ansi_3m -km via
+          mkdir -p out
+          cp rk_r87pro_ansi_3m_via.bin out/r87pro_ansi_3m_via_STOCK.bin
+
+      - name: Remove charging and charged LED flashes
+        run: |
+          f=keyboards/rk/r87pro_ansi_3m/r87pro_ansi_3m.c
+          sed -i 's|rgb_matrix_hs_indicator_set(i, (RGB){0xFF, 0x00, 0x00}, 250, 1);|/* charge-full flash removed */|' $f
+          sed -i 's|rgb_matrix_hs_indicator_set(i, (RGB){0x00, 0x00, 0xFF}, 250, 1);|/* charging flash removed */|' $f
+          test "$(grep -c 'flash removed' $f)" = "2"
+          test "$(grep -c -e '{0xFF, 0x00, 0x00}, 250, 1' -e '{0x00, 0x00, 0xFF}, 250, 1' $f)" = "0"
+          grep -n -A3 -B3 'flash removed' $f
+
+      - name: Build patched firmware
+        run: |
+          qmk clean
+          qmk compile -kb rk/r87pro_ansi_3m -km via
+          cp rk_r87pro_ansi_3m_via.bin out/r87pro_ansi_3m_via_NO_CHARGE_FLASH.bin
+          sha256sum out/*.bin
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r87pro-firmware
+          path: out/*.bin
