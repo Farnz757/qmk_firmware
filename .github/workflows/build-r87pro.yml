@@ -36,6 +36,12 @@ jobs:
           test "$(grep -c -e '{0xFF, 0x00, 0x00}, 250, 1' -e '{0x00, 0x00, 0xFF}, 250, 1' $f)" = "0"
           grep -n -A3 -B3 'flash removed' $f
 
+      - name: Reverse the volume knob direction
+        run: |
+          f=keyboards/rk/r87pro_ansi_3m/keyboard.json
+          sed -i 's|{"pin_a": "B7", "pin_b": "B6"}|{"pin_a": "B6", "pin_b": "B7"}|' $f
+          grep -q '{"pin_a": "B6", "pin_b": "B7"}' $f
+
       - name: Build patched firmware
         run: |
           qmk clean
